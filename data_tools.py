@@ -17,17 +17,21 @@ class LoadData():
     def __init__(self, data_folder_root):
         self.data_folder_root = data_folder_root
 
+        # 金额以万为单位进行计算，所以所有的值都 除 10000
         # 用户存款  shape = (ATM_number, days)  header = None 否则默认第一行作为标头
-        self.data_in = np.array(pd.read_csv(os.path.join(self.data_folder_root, 'IN_DATA.csv'), dtype=int, header=None))
+        self.data_in = np.array(pd.read_csv(os.path.join(self.data_folder_root, 'IN_DATA.csv'), dtype=float, header=None))
+        # self.data_in = self.data_in / 10000
         # 用户取款  shape = (ATM_number, days)
-        self.data_out = np.array(pd.read_csv(os.path.join(self.data_folder_root, 'OUT_DATA.csv'), dtype=int, header=None))
+        self.data_out = np.array(pd.read_csv(os.path.join(self.data_folder_root, 'OUT_DATA.csv'), dtype=float, header=None))
+        self.data_out = self.data_out / 10000.0
 
         # ATM初始余额   shape = (ATM_number,)
         self.init_money = np.array(pd.read_csv(os.path.join(self.data_folder_root, "money.csv"), dtype=int, header=None)).flatten()
         # ATM初始清机系数 shape = (ATM_number,)
         self.init_clear_index = np.array(pd.read_csv(os.path.join(self.data_folder_root, 'clear_index.csv'), dtype=int, header=None)).flatten()
         # ATM最大加钞数  shape = (ATM_number,)
-        self.max_add_money = np.array(pd.read_csv(os.path.join(self.data_folder_root, 'max_add_money.csv'), dtype=int, header=None)).flatten()
+        self.max_add_money = np.array(pd.read_csv(os.path.join(self.data_folder_root, 'max_add_money.csv'), dtype=float, header=None)).flatten()
+        self.max_add_money = self.max_add_money / 10000.0
         # 各ATM机的清机周期 shape = (ATM_number,)
         self.clear_max = np.array(pd.read_csv(os.path.join(self.data_folder_root, 'clear_max.csv'), dtype=int, header=None)).flatten()
         # TODO:ATM 位置或者是两两之间的距离矩阵, shape = (ATM_number + 1, ATM_number + 1) 0下标为现金中心

@@ -20,4 +20,7 @@ class B():
 
 if __name__ == '__main__':
     a = np.zeros((46,1), dtype=int)
-    print(a.shape)
+    b = np.random.uniform(low=-1, high=1, size=(2, 3, 3))
+    print(b)
+    b = np.around(b, decimals=2)
+    print(b)
