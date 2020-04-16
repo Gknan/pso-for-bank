@@ -153,6 +153,72 @@ class PSO():
         self.record_mode = False
         self.record_value = {'X': [], 'V': [], 'Y': []}
 
+    def update_w_ldw(self, iternum):
+        """
+        LDW Linearly Dereasing Weight 按照线性权重方式递减 w，开始时，w 较大，倾向于找全局最优
+        接近迭代结束时，w较小，倾向于找局部最优
+
+        Wmin：迭代结束时使用的 w  0.4
+        Wmax: 开始时使用的 w  0.9
+        iter : 迭代次数
+        num: 当前迭代次数
+        W = wmax - (wmax - wmin) * num / iter
+        :return:
+        """
+        wmax = 0.9
+        wmin = 0.4
+        iter = self.max_iter
+        num = iternum
+
+        return wmax - ((wmax - wmin) * num * 1.0 / iter)
+
+    # def update_V_dynamic_w(self, d_w):
+
+    def update_w_dac(self, iternum):
+        """
+        按照 dac 算法策略更新 w
+        w = Wmax(Wmax - Wmin) * (iter - num) / iter
+        :param iternum:
+        :return:
+        """
+        wmax = 0.9
+        wmin = 0.4
+        iter = self.max_iter
+        num = iternum
+
+        return wmax * ((wmax - wmin) * (iter - num) * 1.0 / iter)
+
+    def update_c1_dac(self, iternum):
+        """
+        靠近 p_best 的权重
+        c1 更新公式，c1 越来越小
+        c = cstart - (cstart - cend) * num / iter
+        :param iternum:
+        :return:
+        """
+        cstart = 2
+        cend = 0.5
+        iter = self.max_iter
+        num = iternum
+
+        return cstart - ((cstart - cend) * num * 1.0 / iter)
+
+    def update_c2_dac(self, iternum):
+        """
+        靠近 gbest 的权重
+        c2 更新公式，c2 越来越大
+        c = cstart + (cstart - cend) * num / iter
+        :param iternum:
+        :return:
+        """
+        cstart = 0.5
+        cend = 2
+        iter = self.max_iter
+        num = iternum
+
+        return cstart + ((cend - cstart) * num * 1.0 / iter)
+
+
     def update_V(self):
         ## 对于种群中每个个体，进行 V 公式的更新
         for i in range(self.pop): # 对于种群中每个个体，进行迭代
@@ -235,8 +301,11 @@ class PSO():
     def run(self, max_iter=None):
         self.max_iter = max_iter or self.max_iter
         for iter_num in range(self.max_iter):
+            # cal dynamic w
+            self.w = self.update_w_ldw(iter_num)
+
             self.update_V()
-            self.recorder()
+            # self.recorder()
             self.update_X()
             self.cal_y()
             self.update_pbest()
@@ -260,7 +329,7 @@ if __name__ == '__main__':
     DATA = LoadData(DATA_ROOT)
 
     pop = 50
-    max_iter = 10000
+    max_iter = 200
     w = 0.8
     # c1 = 0.5
     # c2 = 0.5
