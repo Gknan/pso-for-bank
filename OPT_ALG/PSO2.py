@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from data_tools import ATMData
+np.set_printoptions(suppress=True) # 取消科学计数
 
 class PSO():
     """
@@ -87,8 +88,8 @@ class PSO():
         #
         # self.lb = -np.ones() if lb is None else np.array(lb)
         # self.ub = np.ones() if ub is None else np.array(ub)
-        self.lb = -10000
-        self.ub = 10000
+        self.lb = -60.0
+        self.ub = 60.0
 
         # X 应该和 V 在一个数量级，要不然，很容易导致问题
         # X 的开始一定要随机
@@ -128,9 +129,15 @@ class PSO():
             # update V
             self.V[i, :, :] = v
 
+        # 有效数字
+        self.X = np.around(self.X, decimals=2)
+        self.V = np.around(self.V, decimals=2)
+
         # self.COST = np.zeros(pop)
         # self.COST = np.zeros(pop)
         self.Y = self.cal_y()  # y = f(x) for all particles
+
+        self.Y = np.around(self.Y, decimals=2)
 
         ## 因为 pBest 每个粒子都有一个历史的最值，所以 pBest 比 gBest  要高一维度
         self.pbest_x = self.X.copy()  # personal best location of every particle in history
@@ -156,12 +163,6 @@ class PSO():
                      self.cp * r1 * (self.pbest_x[i] - self.X[i]) + \
                      self.cg * r2 * (self.gbest_x - self.X[i])
 
-        # 速度更新上下界控制
-        # 速度小于下界，选择下界；大于上界，选择上届
-        # self.V = np.where(self.V < lb, lb, self.V) 上下界一放缩，V全部集中到 -100 和 +100
-        # self.V = np.where(self.V < self.lb, self.lb, self.V)
-        # self.V = np.where(self.V > self.ub, self.ub, self.V)
-
         for i in range(self.pop):
             for j in range(self.dim):
                 for k in range(self.day):
@@ -169,11 +170,7 @@ class PSO():
                         self.V[i, j, k] = self.lb
                     if self.V[i, j, k] > self.ub:
                         self.V[i, j, k] = self.ub
-        # r1 = np.random.rand(self.pop, self.dim)
-        # r2 = np.random.rand(self.pop, self.dim)
-        # self.V = self.w * self.V + \
-        #          self.cp * r1 * (self.pbest_x - self.X) + \
-        #          self.cg * r2 * (self.gbest_x - self.X)
+        self.V = np.around(self.V, decimals=2) # 四舍五入，保留两位小数
 
     def update_X(self):
         self.X = self.X + self.V
@@ -185,14 +182,7 @@ class PSO():
                         self.X[i,j,k] = self.xlb[j]
                     if self.X[i,j,k] > self.xub[j]:
                         self.X[i,j,k] = self.xub[j]
-        # for i in range(self.dim):
-        #     # X 上下界控制 bound control
-        #     # self.X = np.where(self.X < self.xlb[i], self.xlb[i], self.V)
-        #     # self.X = np.where(self.X > self.xub[i], self.xub[i], self.V)
-        #     self.X = np.where(self.X < self.xlb[i], self.xlb[i], self.X)
-        #     self.X = np.where(self.X > self.xub[i], self.xub[i], self.X)
-        # if self.has_constraints:
-        #     self.X = np.clip(self.X, self.lb, self.ub)
+        self.X = np.around(self.X, decimals=2)
 
     def cal_y(self):
         # calculate y for every x in X
@@ -202,6 +192,7 @@ class PSO():
         for i in range(self.pop):
             self.Y[i] = ATMData(self.DATA, self.X[i, :, :]).update_COST()
 
+        self.Y = np.around(self.Y, decimals=2)
         return self.Y
 
     def update_pbest(self):
@@ -269,10 +260,12 @@ if __name__ == '__main__':
     DATA = LoadData(DATA_ROOT)
 
     pop = 50
-    max_iter = 1000
+    max_iter = 10000
     w = 0.8
-    c1 = 0.5
-    c2 = 0.5
+    # c1 = 0.5
+    # c2 = 0.5
+    c1 = 2 # 一般去 0~4
+    c2 = 2
 
     start_time = time.time()
     pso = PSO(DATA, pop, max_iter, w, c1, c2)
@@ -283,6 +276,7 @@ if __name__ == '__main__':
 
     # cur - 0/ scale = x - 0/ scalebu 映射会真实的值
     print('全局最小COST对应的加钞方案为:')
-    print(obj.gbest_x)
+    gbest_x = np.around(obj.gbest_x, decimals=2)
+    print(gbest_x)
 
     print("1")
