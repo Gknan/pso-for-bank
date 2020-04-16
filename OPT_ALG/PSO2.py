@@ -75,6 +75,7 @@ class PSO():
         self.DATA_ROOT = self.DATA.data_folder_root
 
         # 上下界需要重新核对 这里的上届是 0，上界限是 最大进而，但是对于 速度而言，一般不能太快，一般是 -1~1 之间
+        # 每次加钞完成后都要根据上下界进行排除，去掉加钞小于下界和大于上界的值
         self.xlb = np.zeros(self.DATA.ATM_number, dtype=int) # 加钞金额的下界
         self.xub = (self.DATA.max_add_money).astype(int) # 加钞金额的上界限
 
@@ -86,8 +87,8 @@ class PSO():
         #
         # self.lb = -np.ones() if lb is None else np.array(lb)
         # self.ub = np.ones() if ub is None else np.array(ub)
-        self.lb = -1
-        self.ub = 1
+        self.lb = -10000
+        self.ub = 10000
 
         # X 应该和 V 在一个数量级，要不然，很容易导致问题
         # X 的开始一定要随机
@@ -98,19 +99,31 @@ class PSO():
         self.V = np.zeros((self.pop, self.dim, self.day))
         for i in range(self.pop):
             # x = np.zeros((self.dim, self.day), dtype=int)
-            x = np.zeros((self.dim, self.day))
+            # 初始加钞金额
+            # x = np.zeros((self.dim, self.day))
             # 这里的速度需要重新设置初始值
-            v_high = self.ub - self.lb
-            v = np.random.uniform(low=-v_high, high=v_high,
-                                  size=(self.dim, self.day))
+            # v_high = self.ub - self.lb
+            # v = np.random.uniform(low=-v_high, high=v_high,
+            #                       size=(self.dim, self.day))
+            # 初始化速度在 lb 与 ub 之间的随机值
+            v = np.random.uniform(low=self.lb, high=self.ub, size=(self.dim, self.day))
 
             # 缩小 x 的值，和 v 一个数量级或者只高 一个数量级
             # self.scale = self.xub - self.xlb # 0~10
-            self.scaleub = 10000  # 把 0~ scale 映射到 0~5 上    cur - 0/ scale = x - 0/ scalebu
+            # self.scaleub = 10000  # 把 0~ scale 映射到 0~5 上    cur - 0/ scale = x - 0/ scalebu
             # 钞值单位按 万来看
-            for t in range(self.day):
-                x[:, t] = (self.xlb + np.random.random(self.dim) * (self.xub - self.xlb)) / self.scaleub
+            # 第 i 个种群 第 t 天的加钞金额
+            # for t in range(self.day):
+            #     x[:, t] = (self.xlb + np.random.random(self.dim) * (self.xub - self.xlb)) / self.scaleub
 
+            # 初始加钞金额
+            x = np.zeros((self.dim, self.day), dtype=int)
+            # 机型不同，xlb 和 xub 不同，所以 xlb = [72 * 1]
+            for j in range(self.dim): # 对于 第 i 台机器
+                x[j] = np.random.uniform(low=self.xlb[j], high=self.xub[j], size=self.day)
+
+            # X  50 * 72 * 7   x 72 * 7
+            # self.X[i, :, :] = x
             self.X[i, :, :] = x
             # update V
             self.V[i, :, :] = v
@@ -123,7 +136,7 @@ class PSO():
         self.pbest_x = self.X.copy()  # personal best location of every particle in history
         self.pbest_y = self.Y.copy()  # best image of every particle in history
         self.gbest_x = np.zeros((self.dim, self.day))  # global best location for all particles
-        self.gbest_y = np.inf  # global best y for all particles
+        self.gbest_y = np.inf  # global best y for all particles # y 越小越好，初始为 正无穷
         self.gbest_y_hist = []  # gbest_y of every iteration
 
         # 初始化 gbest_x gbest_y
@@ -135,7 +148,7 @@ class PSO():
 
     def update_V(self):
         ## 对于种群中每个个体，进行 V 公式的更新
-        for i in range(self.pop): # 对于种群中每个个体，进行跌打
+        for i in range(self.pop): # 对于种群中每个个体，进行迭代
             # update random
             r1 = np.random.rand()  # r 使用 size_pop * 1
             r2 = np.random.rand()
@@ -143,6 +156,19 @@ class PSO():
                      self.cp * r1 * (self.pbest_x[i] - self.X[i]) + \
                      self.cg * r2 * (self.gbest_x - self.X[i])
 
+        # 速度更新上下界控制
+        # 速度小于下界，选择下界；大于上界，选择上届
+        # self.V = np.where(self.V < lb, lb, self.V) 上下界一放缩，V全部集中到 -100 和 +100
+        # self.V = np.where(self.V < self.lb, self.lb, self.V)
+        # self.V = np.where(self.V > self.ub, self.ub, self.V)
+
+        for i in range(self.pop):
+            for j in range(self.dim):
+                for k in range(self.day):
+                    if self.V[i, j, k] < self.lb:
+                        self.V[i, j, k] = self.lb
+                    if self.V[i, j, k] > self.ub:
+                        self.V[i, j, k] = self.ub
         # r1 = np.random.rand(self.pop, self.dim)
         # r2 = np.random.rand(self.pop, self.dim)
         # self.V = self.w * self.V + \
@@ -152,6 +178,19 @@ class PSO():
     def update_X(self):
         self.X = self.X + self.V
 
+        for i in range(self.pop):
+            for j in range(self.dim):
+                for k in range(self.day):
+                    if self.X[i,j,k] < self.xlb[j]:
+                        self.X[i,j,k] = self.xlb[j]
+                    if self.X[i,j,k] > self.xub[j]:
+                        self.X[i,j,k] = self.xub[j]
+        # for i in range(self.dim):
+        #     # X 上下界控制 bound control
+        #     # self.X = np.where(self.X < self.xlb[i], self.xlb[i], self.V)
+        #     # self.X = np.where(self.X > self.xub[i], self.xub[i], self.V)
+        #     self.X = np.where(self.X < self.xlb[i], self.xlb[i], self.X)
+        #     self.X = np.where(self.X > self.xub[i], self.xub[i], self.X)
         # if self.has_constraints:
         #     self.X = np.clip(self.X, self.lb, self.ub)
 
@@ -170,6 +209,7 @@ class PSO():
         personal best
         :return:
         '''
+        # 更新每个群体中的历史最佳值
         for i in range(self.pop):
             # 当前计算的 Y 比 历史的最佳  best_y 小，选择当前的 X 作为 pbest_X,柔则 不变
             self.pbest_x[i] = np.where(self.pbest_y[i] > self.Y[i], self.X[i], self.pbest_x[i])
@@ -213,8 +253,10 @@ class PSO():
 
             self.gbest_y_hist.append(self.gbest_y)
             print('第{}次迭代结束，共{}次迭代'.format(iter_num, self.max_iter))
-            print("-------------------------------------")
+
             print("当前最小的COST为:{:.2f}".format(self.gbest_y))
+            print("-------------------------------------")
+        # 选中的 X 带入代价函数计算
         return self
 
     # fit = run
@@ -227,7 +269,7 @@ if __name__ == '__main__':
     DATA = LoadData(DATA_ROOT)
 
     pop = 50
-    max_iter = 100
+    max_iter = 1000
     w = 0.8
     c1 = 0.5
     c2 = 0.5
