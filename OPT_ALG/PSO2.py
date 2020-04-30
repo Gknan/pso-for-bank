@@ -301,8 +301,13 @@ class PSO():
     def run(self, max_iter=None):
         self.max_iter = max_iter or self.max_iter
         for iter_num in range(self.max_iter):
-            # cal dynamic w
-            self.w = self.update_w_ldw(iter_num)
+            # cal dynamic w with ldw
+            # self.w = self.update_w_ldw(iter_num)
+
+            # PSO_DAC
+            # self.w = self.update_w_dac(iter_num)
+            # self.cp = self.update_c1_dac(iter_num)
+            # self.cg = self.update_c2_dac(iter_num)
 
             self.update_V()
             # self.recorder()
@@ -329,7 +334,7 @@ if __name__ == '__main__':
     DATA = LoadData(DATA_ROOT)
 
     pop = 50
-    max_iter = 200
+    max_iter = 1000
     w = 0.8
     # c1 = 0.5
     # c2 = 0.5
